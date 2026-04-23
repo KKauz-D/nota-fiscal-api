@@ -192,9 +192,3 @@ curl -X POST http://localhost:8000/api/lotes/transmitir \
 | Usuário | Senha      | Role  |
 |---------|------------|-------|
 | admin   | admin123   | admin |
-
-> **Importante:** Altere a senha do admin em produção.
-
-## Licença
-
-Uso interno.
