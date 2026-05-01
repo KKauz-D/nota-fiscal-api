@@ -8,4 +8,5 @@ enum BatchStatus: string
     case ProcessadoSucesso = 'Processado com Sucesso';
     case ErroProcessamento = 'Erro de Processamento';
     case NaoProcessado = 'Nao Processado';
+    case NfseGerada = 'NFSe Gerada';
 }
