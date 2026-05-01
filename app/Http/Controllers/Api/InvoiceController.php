@@ -53,7 +53,7 @@ class InvoiceController extends Controller
 
         if ($result['success']) {
             $invoice->update([
-                'status' => 'Cancelada',
+                'status' => 'cancelada',
                 'motivo_cancelamento' => $request->input('motivo', $result['message']),
             ]);
 
@@ -62,10 +62,13 @@ class InvoiceController extends Controller
                 details: "NFS-e {$invoice->numero_nfse} cancelada: {$result['message']}",
                 ipAddress: $request->ip(),
             );
+        } elseif (($result['code'] ?? null) === 'E79') {
+            // Já cancelada no GINFES — sincroniza o banco local
+            $invoice->update(['status' => 'cancelada']);
         }
 
         return $result['success']
             ? $this->success(new InvoiceResource($invoice->fresh()), $result['message'])
-            : $this->error($result['message'], 422, ['code' => $result['code']]);
+            : $this->error($result['message'], 422, ['data' => ['code' => $result['code']]]);
     }
 }

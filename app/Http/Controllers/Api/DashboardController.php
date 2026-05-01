@@ -28,7 +28,7 @@ class DashboardController extends Controller
         $totalLotes = (clone $batchesQuery)->count();
         $totalNotas = (clone $invoicesQuery)->count();
         $notasEmitidas = (clone $invoicesQuery)->where('status', 'Emitida')->count();
-        $notasCanceladas = (clone $invoicesQuery)->where('status', 'Cancelada')->count();
+        $notasCanceladas = (clone $invoicesQuery)->where('status', 'cancelada')->count();
         $valorTotal = (clone $invoicesQuery)->where('status', 'Emitida')->sum('valor_servicos');
 
         // Últimos 10 lotes

@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Lotes (Batches)
     Route::get('/lotes', [BatchController::class, 'index']);
+    Route::get('/lotes/{batch}', [BatchController::class, 'show']);
     Route::post('/lotes/preview', [BatchController::class, 'preview']);
     Route::post('/lotes/transmitir', [BatchController::class, 'transmitir']);
     Route::post('/lotes/{batch}/sincronizar', [BatchController::class, 'sincronizar']);

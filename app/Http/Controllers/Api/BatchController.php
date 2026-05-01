@@ -123,9 +123,26 @@ class BatchController extends Controller
     /**
      * Reenvia um lote existente (retransmite os dados originais).
      */
+    public function show(Request $request, Batch $batch): JsonResponse
+    {
+        return $this->success(array_merge(
+            (new BatchResource($batch->load('invoices')))->toArray($request),
+            ['dados_originais' => $batch->dados_originais ?? []]
+        ));
+    }
+
+    /**
+     * Reenvia um lote existente (retransmite os dados originais ou editados).
+     */
     public function reenviar(Request $request, Batch $batch): JsonResponse
     {
-        if (empty($batch->dados_originais)) {
+        $dadosOriginais = $request->has('edited_rps')
+            ? (is_array($request->input('edited_rps'))
+                ? $request->input('edited_rps')
+                : json_decode($request->input('edited_rps'), true))
+            : ($batch->dados_originais ?? null);
+
+        if (empty($dadosOriginais)) {
             return $this->error('Lote não possui dados originais para reenvio.', 422);
         }
 
@@ -133,7 +150,7 @@ class BatchController extends Controller
         $ambiente = $batch->ambiente;
 
         $newBatch = $this->batchSyncService->transmitir(
-            $batch->dados_originais,
+            $dadosOriginais,
             $batch->cnpj,
             $batch->im,
             $certs,
