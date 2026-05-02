@@ -11,6 +11,7 @@ class CompanyResource extends JsonResource
     {
         return [
             'cnpj' => $this->resource['cnpj'] ?? null,
+            'im'   => $this->resource['im'] ?? null,
             'cert_file' => $this->resource['cert_file'] ?? null,
             'saved_at' => $this->resource['saved_at'] ?? null,
         ];

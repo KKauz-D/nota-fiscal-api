@@ -54,6 +54,7 @@ class CertificateStorageService
             $data = json_decode(Storage::disk($this->disk)->get($file), true) ?: [];
             $empresas[] = [
                 'cnpj' => $cnpj,
+                'im'   => $data['im'] ?? '',
                 'cert_file' => $data['cert_file'] ?? '-',
                 'saved_at' => $data['saved_at'] ?? '-',
             ];

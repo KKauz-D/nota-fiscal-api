@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\BatchStatusCast;
+use App\Casts\EnvironmentCast;
 use App\Enums\BatchStatus;
 use App\Enums\Environment;
 use Illuminate\Database\Eloquent\Model;
@@ -30,8 +32,8 @@ class Batch extends Model
             'errors' => 'array',
             'rps_count' => 'integer',
             'situacao_code' => 'integer',
-            'status' => BatchStatus::class,
-            'ambiente' => Environment::class,
+            'status' => BatchStatusCast::class,
+            'ambiente' => EnvironmentCast::class,
         ];
     }
 
