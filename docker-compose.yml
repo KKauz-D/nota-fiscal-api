@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: nota-api
+    ports:
+      - "8181:8000"
+    volumes:
+      - .:/var/www
+      - ./database:/var/www/database
+    working_dir: /var/www
+    env_file:
+      - .env
+    restart: unless-stopped
