@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev zip \
     libpng-dev libjpeg-dev libfreetype6-dev \
     libxml2-dev \
+    libsqlite3-dev sqlite3 \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_sqlite pdo_mysql zip gd soap \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
