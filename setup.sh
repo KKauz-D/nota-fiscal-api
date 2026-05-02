@@ -1,8 +1,18 @@
 #!/bin/bash
 set -e
 
+# Detecta versão do docker compose disponível
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif command -v docker-compose &>/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+else
+    echo "❌ docker compose / docker-compose não encontrado. Instale o Docker."
+    exit 1
+fi
+
 echo "🐳 Subindo container..."
-docker compose up -d --build
+$COMPOSE up -d --build
 
 echo "⚙️  Configurando .env..."
 if [ ! -f .env ]; then
