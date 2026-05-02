@@ -10,6 +10,7 @@ services:
       - "8181:8000"
     volumes:
       - .:/var/www
+      - /var/www/vendor
       - ./database:/var/www/database
     working_dir: /var/www
     env_file:
