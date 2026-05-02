@@ -11,9 +11,6 @@ else
     exit 1
 fi
 
-echo "🐳 Subindo container..."
-$COMPOSE up -d --build
-
 echo "⚙️  Configurando .env..."
 if [ ! -f .env ]; then
     cp .env.example .env
@@ -22,14 +19,21 @@ else
     echo "   .env já existe, mantendo..."
 fi
 
-echo "🔑 Gerando APP_KEY..."
-docker exec nota-api php artisan key:generate --force
-
 echo "🗄️  Criando banco SQLite..."
+mkdir -p database
 touch database/database.sqlite
 
+echo "🐳 Buildando e subindo container..."
+$COMPOSE up -d --build
+
+echo "⏳ Aguardando container iniciar..."
+sleep 5
+
+echo "🔑 Gerando APP_KEY..."
+$COMPOSE exec app php artisan key:generate --force
+
 echo "📦 Rodando migrations..."
-docker exec nota-api php artisan migrate --force --seed
+$COMPOSE exec app php artisan migrate --force --seed
 
 echo ""
 echo "✅ Projeto pronto em http://localhost:8181"
