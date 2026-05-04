@@ -51,7 +51,7 @@ class BatchController extends Controller
         $fullPath = storage_path('app/private/' . $tempPath);
 
         try {
-            $rawListaRps = $this->excelImportService->read($fullPath);
+            $rawListaRps = $this->excelImportService->read($fullPath, $request->input('competencia') ?: null);
             $listaRps = $this->batchSyncService->prepareRpsNumbering($rawListaRps, $cnpj);
 
             return $this->success($listaRps, 'Preview gerado com sucesso.');
@@ -81,7 +81,7 @@ class BatchController extends Controller
             $fullPath = storage_path('app/private/' . $tempPath);
 
             try {
-                $listaRps = $this->excelImportService->read($fullPath);
+                $listaRps = $this->excelImportService->read($fullPath, $request->input('competencia') ?: null);
             } finally {
                 @unlink($fullPath);
             }

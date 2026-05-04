@@ -18,6 +18,7 @@ class TransmitBatchRequest extends FormRequest
             'cnpj' => ['required', 'string'],
             'im' => ['required', 'string'],
             'ambiente' => ['required', 'in:prod,homolog'],
+            'competencia' => ['nullable', 'string', 'regex:/^(\d{2}\/\d{4}|\d{4}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/'],
             'edited_rps' => ['sometimes', 'array', 'min:1'],
             'excel_file' => ['required_without:edited_rps', 'file', 'mimes:xlsx,xls'],
         ];

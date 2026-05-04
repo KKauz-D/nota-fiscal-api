@@ -16,6 +16,7 @@ class StoreBatchRequest extends FormRequest
         return [
             'cnpj' => ['required', 'string'],
             'excel_file' => ['required', 'file', 'mimes:xlsx,xls'],
+            'competencia' => ['nullable', 'string', 'regex:/^(\d{2}\/\d{4}|\d{4}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/'],
         ];
     }
 

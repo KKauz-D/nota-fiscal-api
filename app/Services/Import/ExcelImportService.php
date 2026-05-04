@@ -46,6 +46,7 @@ class ExcelImportService
         'tomador_telefone'         => ['Tomador TElefone', 'Tomador Telefone', 'Telefone Tomador', 'tomador_telefone'],
         'retencao_federal'         => ['Retenção Federal', 'Retenção', 'retencao_federal'],
         'cnae'                     => ['CNAE', 'CNAE/Serviço', 'cnae'],
+        'competencia'              => ['Competência', 'Competencia', 'Comp.', 'competencia'],
     ];
 
     private const LEGACY_COLUMN_MAP = [
@@ -68,8 +69,12 @@ class ExcelImportService
 
     /**
      * Lê um arquivo Excel e retorna array de RPS estruturados.
+     *
+     * @param  string|null  $competenciaOverride  Competência no formato MM/AAAA —
+     *                                             quando informada, sobrepõe a data de
+     *                                             emissão de todos os RPS da planilha.
      */
-    public function read(string $filePath): array
+    public function read(string $filePath, ?string $competenciaOverride = null): array
     {
         if (! file_exists($filePath)) {
             throw new Exception("Arquivo não encontrado: {$filePath}");
@@ -116,7 +121,7 @@ class ExcelImportService
             }
 
             if (! $isEmptyRow) {
-                $data[] = $this->structureRps($item);
+                $data[] = $this->structureRps($item, $competenciaOverride);
             }
         }
 
@@ -171,10 +176,60 @@ class ExcelImportService
             return $timestamp ? date('Y-m-d\TH:i:s', $timestamp) : date('Y-m-d\TH:i:s');
         }
 
+        if ($key === 'competencia') {
+            return trim($value);
+        }
+
         return $value;
     }
 
-    private function structureRps(array $flatData): array
+    /**
+     * Converte competência para ISO 8601.
+     *
+     * Formatos aceitos:
+     *   MM/AAAA        → último dia do mês às 23:59:59
+     *   AAAA-MM        → último dia do mês às 23:59:59
+     *   DD/MM/AAAA     → data exata às 00:00:00
+     *   AAAA-MM-DD     → data exata às 00:00:00
+     *   Número Excel   → data exata convertida pelo PhpSpreadsheet
+     */
+    private function competenciaToDate(string $competencia): string
+    {
+        $v = trim($competencia);
+
+        // Número serial do Excel
+        if (is_numeric($v)) {
+            return Date::excelToDateTimeObject((float) $v)->format('Y-m-d\T00:00:00');
+        }
+
+        // MM/AAAA → último dia do mês
+        if (preg_match('/^(\d{2})\/(\d{4})$/', $v, $m)) {
+            $lastDay = (int) date('t', mktime(0, 0, 0, (int) $m[1], 1, (int) $m[2]));
+            return sprintf('%04d-%02d-%02dT23:59:59', (int) $m[2], (int) $m[1], $lastDay);
+        }
+
+        // AAAA-MM → último dia do mês
+        if (preg_match('/^(\d{4})-(\d{2})$/', $v, $m)) {
+            $lastDay = (int) date('t', mktime(0, 0, 0, (int) $m[2], 1, (int) $m[1]));
+            return sprintf('%04d-%02d-%02dT23:59:59', (int) $m[1], (int) $m[2], $lastDay);
+        }
+
+        // DD/MM/AAAA → data exata
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $v, $m)) {
+            return sprintf('%04d-%02d-%02dT00:00:00', (int) $m[3], (int) $m[2], (int) $m[1]);
+        }
+
+        // AAAA-MM-DD → data exata
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)) {
+            return $v . 'T00:00:00';
+        }
+
+        // Tentativa genérica via strtotime
+        $ts = strtotime(str_replace('/', '-', $v));
+        return $ts ? date('Y-m-d\TH:i:s', $ts) : date('Y-m-d\TH:i:s');
+    }
+
+    private function structureRps(array $flatData, ?string $competenciaOverride = null): array
     {
         // === TOMADOR AUTOMATION ===
         $cpfCnpj = preg_replace('/\D/', '', $flatData['tomador_cpf_cnpj'] ?? '');
@@ -199,20 +254,42 @@ class ExcelImportService
         }
 
         // Cálculos financeiros
-        $valorServicos = (float) ($flatData['valor_servicos'] ?? 0);
-        $issRetido = ($flatData['iss_retido'] ?? '') ?: '2';
-        $aliquota = (float) ($flatData['aliquota'] ?? 0);
-        $valorIss = $valorServicos * ($aliquota / 100);
+        $valorServicos  = (float) ($flatData['valor_servicos'] ?? 0);
+        $optanteSimples = ($flatData['optante_simples'] ?? '') ?: '2';
+        $issRetido      = ($flatData['iss_retido'] ?? '') ?: '2';
+        $aliquota       = (float) ($flatData['aliquota'] ?? 0);
+        $valorIss       = round($valorServicos * ($aliquota / 100), 2);
 
-        $aplicaRetencao = strtolower(trim($flatData['retencao_federal'] ?? '')) === 'sim';
-        $valorPis = $aplicaRetencao ? $valorServicos * 0.0065 : 0;
-        $valorCofins = $aplicaRetencao ? $valorServicos * 0.03 : 0;
-        $valorCsll = $aplicaRetencao ? $valorServicos * 0.01 : 0;
-        $valorIr = $aplicaRetencao ? $valorServicos * 0.015 : 0;
+        // Retenções federais
+        // Regra automática: aplica quando NÃO optante do Simples Nacional (código 2).
+        // O campo 'retencao_federal' na planilha permite override explícito:
+        //   'sim' → força a aplicação mesmo para optantes
+        //   'nao' → suprime mesmo para não-optantes
+        $retencaoExplicita = strtolower(trim($flatData['retencao_federal'] ?? ''));
+        if ($retencaoExplicita === 'nao') {
+            $aplicaRetencao = false;
+        } elseif ($retencaoExplicita === 'sim') {
+            $aplicaRetencao = true;
+        } else {
+            $aplicaRetencao = ($optanteSimples === '2');
+        }
+
+        // PIS 0,65% | COFINS 3% | CSLL 1% (CSRF total = 4,65%) | IR 1,5%
+        $valorPis    = $aplicaRetencao ? round($valorServicos * 0.0065, 2) : 0;
+        $valorCofins = $aplicaRetencao ? round($valorServicos * 0.03,   2) : 0;
+        $valorCsll   = $aplicaRetencao ? round($valorServicos * 0.01,   2) : 0;
+        $valorIr     = $aplicaRetencao ? round($valorServicos * 0.015,  2) : 0;
 
         $totalRetencoesFederais = $valorPis + $valorCofins + $valorCsll + $valorIr;
-        $descontoIss = ($issRetido == '1') ? $valorIss : 0;
-        $valorLiquido = $valorServicos - $descontoIss - $totalRetencoesFederais;
+        $descontoIss  = ($issRetido == '1') ? $valorIss : 0;
+        $valorLiquido = round($valorServicos - $descontoIss - $totalRetencoesFederais, 2);
+
+        // Competência → DataEmissao
+        // Prioridade: override do formulário > coluna da planilha > coluna data_emissao
+        $competenciaRaw   = $competenciaOverride ?? ($flatData['competencia'] ?? '');
+        $dataEmissaoFinal = ! empty($competenciaRaw)
+            ? $this->competenciaToDate($competenciaRaw)
+            : (($flatData['data_emissao'] ?? '') ?: date('Y-m-d\TH:i:s'));
 
         $codMunicipio = config('ginfes.cod_municipio');
 
@@ -223,9 +300,9 @@ class ExcelImportService
                     'Serie' => ($flatData['rps_serie'] ?? '') ?: 'A',
                     'Tipo' => ($flatData['rps_tipo'] ?? '') ?: '1',
                 ],
-                'DataEmissao' => ($flatData['data_emissao'] ?? '') ?: date('Y-m-d\TH:i:s'),
+                'DataEmissao' => $dataEmissaoFinal,
                 'NaturezaOperacao' => ($flatData['natureza_operacao'] ?? '') ?: '1',
-                'OptanteSimplesNacional' => ($flatData['optante_simples'] ?? '') ?: '2',
+                'OptanteSimplesNacional' => $optanteSimples,
                 'IncentivadorCultural' => ($flatData['incentivador_cultural'] ?? '') ?: '2',
                 'Status' => ($flatData['status'] ?? '') ?: '1',
                 'Servico' => [
