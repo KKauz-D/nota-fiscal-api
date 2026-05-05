@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notas (Invoices)
     Route::get('/notas', [InvoiceController::class, 'index']);
+    Route::get('/notas/{invoice}', [InvoiceController::class, 'show']);
+    Route::patch('/notas/{invoice}/marcar-baixado', [InvoiceController::class, 'marcarBaixado']);
     Route::post('/notas/{invoice}/cancelar', [InvoiceController::class, 'cancelar']);
 
     // Tomadores (Customers)

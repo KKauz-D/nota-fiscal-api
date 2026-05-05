@@ -19,14 +19,19 @@ class Invoice extends Model
         'im',
         'status',
         'motivo_cancelamento',
+        'pdf_baixado',
+        'pdf_baixado_em',
+        'pdf_caminho',
     ];
 
     protected function casts(): array
     {
         return [
-            'data_emissao' => 'datetime',
+            'data_emissao'   => 'datetime',
             'valor_servicos' => 'decimal:2',
-            'status' => InvoiceStatus::class,
+            'status'         => InvoiceStatus::class,
+            'pdf_baixado'    => 'boolean',
+            'pdf_baixado_em' => 'datetime',
         ];
     }
 

@@ -32,10 +32,32 @@ class InvoiceController extends Controller
         if ($status = $request->query('status')) {
             $query->where('status', $status);
         }
+        if ($request->query('batch_id')) {
+            $query->where('batch_id', $request->query('batch_id'));
+        }
+        if ($request->query('pdf_baixado') !== null) {
+            $query->where('pdf_baixado', filter_var($request->query('pdf_baixado'), FILTER_VALIDATE_BOOLEAN));
+        }
 
         $invoices = $query->paginate($request->query('per_page', 20));
 
         return $this->success(InvoiceResource::collection($invoices)->response()->getData(true));
+    }
+
+    public function show(Invoice $invoice): JsonResponse
+    {
+        return $this->success(new InvoiceResource($invoice));
+    }
+
+    public function marcarBaixado(Request $request, Invoice $invoice): JsonResponse
+    {
+        $invoice->update([
+            'pdf_baixado'    => true,
+            'pdf_baixado_em' => now(),
+            'pdf_caminho'    => $request->input('caminho'),
+        ]);
+
+        return $this->success(new InvoiceResource($invoice));
     }
 
     public function cancelar(CancelInvoiceRequest $request, Invoice $invoice): JsonResponse

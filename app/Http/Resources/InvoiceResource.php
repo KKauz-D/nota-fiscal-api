@@ -21,6 +21,9 @@ class InvoiceResource extends JsonResource
             'im' => $this->im,
             'status' => $this->status,
             'motivo_cancelamento' => $this->motivo_cancelamento,
+            'pdf_baixado' => (bool) $this->pdf_baixado,
+            'pdf_baixado_em' => $this->pdf_baixado_em?->toIso8601String(),
+            'pdf_caminho' => $this->pdf_caminho,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
