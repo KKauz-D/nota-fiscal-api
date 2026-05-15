@@ -75,6 +75,12 @@ class BatchSyncService
         $response = $this->soapService->sendLoteRps($xmlAssinado, $ambiente);
         $protocolo = $this->extractProtocolo($response);
 
+        // Capturar erros se não houver protocolo
+        $errors = [];
+        if (! $protocolo && is_string($response)) {
+            $errors = $this->parseErrors($response);
+        }
+
         // Salvar XML no disco
         $xmlFileName = "lote_rps_{$loteId}.xml";
         Storage::disk('xml')->put($xmlFileName, $xmlAssinado);
@@ -88,8 +94,9 @@ class BatchSyncService
             'xml_file' => $xmlFileName,
             'protocolo' => $protocolo,
             'ambiente' => $ambiente,
-            'status' => BatchStatus::Transmitido,
+            'status' => $protocolo ? BatchStatus::Transmitido : BatchStatus::ErroProcessamento,
             'dados_originais' => $listaRps,
+            'errors' => ! empty($errors) ? $errors : null,
         ]);
     }
 
@@ -118,6 +125,9 @@ class BatchSyncService
         $situacaoCode = 0;
         $statusText = 'Consultado';
 
+        $invoicesCount = 0;
+        $errors = [];
+
         if (preg_match('/<(?:\w+:)?Situacao>(\d+)<\/(?:\w+:)?Situacao>/', $resSitStr, $m)) {
             $situacaoCode = (int) $m[1];
             $statusText = match ($situacaoCode) {
@@ -127,26 +137,6 @@ class BatchSyncService
                 4 => 'Processado com Sucesso',
                 default => "Situação {$situacaoCode}",
             };
-        }
-
-        $invoicesCount = 0;
-        $errors = [];
-
-        // Verificar erros na resposta de situação (strip namespaces para SimpleXML)
-        $cleanXml = preg_replace('/(<\/?)([a-zA-Z0-9]+):/', '$1', $resSitStr);
-        $xml = @simplexml_load_string($cleanXml);
-
-        if ($xml && isset($xml->ListaMensagemRetorno->MensagemRetorno)) {
-            foreach ($xml->ListaMensagemRetorno->MensagemRetorno as $msg) {
-                $error = [
-                    'codigo' => trim((string) $msg->Codigo),
-                    'mensagem' => trim((string) $msg->Mensagem),
-                ];
-                if (isset($msg->Correcao)) {
-                    $error['correcao'] = html_entity_decode(trim((string) $msg->Correcao));
-                }
-                $errors[] = $error;
-            }
         }
 
         // 2. Se processado com sucesso, buscar notas
@@ -160,6 +150,9 @@ class BatchSyncService
             $statusText = 'NFSe Gerada';
 
             $invoicesCount = $this->parseAndSaveInvoices($batch, $cnpj, $im, $resLoteStr);
+        } else {
+            // Se não for processado com sucesso, capturar erros da resposta de situação
+            $errors = $this->parseErrors($resSitStr);
         }
 
         // 3. Atualizar lote
@@ -222,20 +215,42 @@ class BatchSyncService
         return $this->certificateService->extractCerts($pfxContent, $password);
     }
 
-    private function extractProtocolo(mixed $response): string
+    private function extractProtocolo(mixed $response): ?string
     {
         if (is_string($response)) {
             if (preg_match('/<Protocolo>(.*?)<\/Protocolo>/', $response, $m)) {
                 return $m[1];
             }
-            return 'Não transmitido';
+            return null;
         }
 
         if (is_object($response) && isset($response->Protocolo)) {
             return (string) $response->Protocolo;
         }
 
-        return 'Não transmitido';
+        return null;
+    }
+
+    private function parseErrors(string $xmlContent): array
+    {
+        $errors = [];
+        $cleanXml = preg_replace('/(<\/?)([a-zA-Z0-9]+):/', '$1', $xmlContent);
+        $xml = @simplexml_load_string($cleanXml);
+
+        if ($xml && isset($xml->ListaMensagemRetorno->MensagemRetorno)) {
+            foreach ($xml->ListaMensagemRetorno->MensagemRetorno as $msg) {
+                $error = [
+                    'codigo' => trim((string) $msg->Codigo),
+                    'mensagem' => trim((string) $msg->Mensagem),
+                ];
+                if (isset($msg->Correcao)) {
+                    $error['correcao'] = html_entity_decode(trim((string) $msg->Correcao));
+                }
+                $errors[] = $error;
+            }
+        }
+
+        return $errors;
     }
 
     private function parseAndSaveInvoices(Batch $batch, string $cnpj, string $im, string $xmlResponse): int
