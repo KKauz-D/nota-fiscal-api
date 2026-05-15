@@ -59,11 +59,11 @@ class SoapService
     }
 
     /**
-     * Consulta as notas geradas em um lote (ConsultarLoteRpsV3).
+     * Consulta as notas geradas em um lote (ConsultarLoteRpsV4).
      */
     public function consultarLoteRps(string $xmlConsulta, Environment $ambiente): mixed
     {
-        return $this->call('ConsultarLoteRpsV3', $xmlConsulta, $ambiente, withCabecalho: true);
+        return $this->call('ConsultarLoteRpsV4', $xmlConsulta, $ambiente, withCabecalho: true);
     }
 
     /**
