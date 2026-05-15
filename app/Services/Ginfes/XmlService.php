@@ -233,7 +233,7 @@ class XmlService
     /**
      * Gera o XML de ConsultarSituacaoLoteRps.
      */
-    public function generateConsultarSituacao(string $cnpj, string $inscricaoMunicipal, string $protocolo): string
+    public function generateConsultarSituacao(string $cnpj, string $inscricaoMunicipal, ?string $protocolo): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
@@ -259,7 +259,7 @@ class XmlService
     /**
      * Gera o XML de ConsultarLoteRps.
      */
-    public function generateConsultarLoteRps(string $cnpj, string $inscricaoMunicipal, string $protocolo): string
+    public function generateConsultarLoteRps(string $cnpj, string $inscricaoMunicipal, ?string $protocolo): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;

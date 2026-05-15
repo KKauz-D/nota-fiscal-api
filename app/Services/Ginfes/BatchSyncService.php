@@ -114,6 +114,11 @@ class BatchSyncService
         $protocolo = $batch->protocolo;
         $ambiente = $batch->ambiente;
 
+        // Lotes sem protocolo não podem ser sincronizados (transmissão falhou)
+        if (! $protocolo) {
+            throw new Exception('Este lote não possui protocolo de transmissão. Verifique os erros e retransmita.');
+        }
+
         // 1. Consultar situação
         $xmlSituacao = $this->certificateService->signXml(
             $this->xmlService->generateConsultarSituacao($cnpj, $im, $protocolo),
