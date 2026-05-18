@@ -33,9 +33,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lotes/{batch}', [BatchController::class, 'show']);
     Route::post('/lotes/preview', [BatchController::class, 'preview']);
     Route::post('/lotes/transmitir', [BatchController::class, 'transmitir']);
+    Route::post('/lotes/enriquecer-cnae', [BatchController::class, 'enriquecerCnae']);
     Route::post('/lotes/{batch}/sincronizar', [BatchController::class, 'sincronizar']);
     Route::post('/lotes/{batch}/reenviar', [BatchController::class, 'reenviar']);
     Route::delete('/lotes/{batch}', [BatchController::class, 'destroy']);
+
 
     // Notas (Invoices)
     Route::get('/notas', [InvoiceController::class, 'index']);

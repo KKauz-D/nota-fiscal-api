@@ -325,9 +325,19 @@ class BatchSyncService
     }
 
     /**
-     * Enrich RPS items with tax data (NBS, IbsCbs) from CSV lookup.
+     * Enrich RPS items with tax data from CSV CNAE lookup.
+     *
+     * Fields overwritten when found in the lookup table:
+     *   - Servico.ItemListaServico
+     *   - Servico.Valores.Aliquota  (+ recalculates ValorIss and ValorLiquidoNfse)
+     *   - Servico.CodigoNbs
+     *   - IbsCbs.CodigoIndicadorOperacao
+     *   - IbsCbs.CST
+     *   - IbsCbs.CodigoClassTrib
+     *
+     * @param  bool  $forceOverwrite  When true, overwrites even non-empty fields.
      */
-    private function enrichRpsWithTaxData(array $listaRps): array
+    public function enrichRpsWithTaxData(array $listaRps, bool $forceOverwrite = false): array
     {
         foreach ($listaRps as &$item) {
             $codTribMun = $item['InfRps']['Servico']['CodigoTributacaoMunicipio'] ?? '';
@@ -340,28 +350,68 @@ class BatchSyncService
                 continue;
             }
 
-            // Fill CodigoNbs if empty
-            if (empty($item['InfRps']['Servico']['CodigoNbs']) && ! empty($taxData['cod_nbs'])) {
-                $item['InfRps']['Servico']['CodigoNbs'] = $taxData['cod_nbs'];
+            // ── ItemListaServico ─────────────────────────────────────────────
+            if (! empty($taxData['item_lista_servico'])) {
+                $current = $item['InfRps']['Servico']['ItemListaServico'] ?? '';
+                if ($forceOverwrite || empty($current) || $current === '1.01') {
+                    $item['InfRps']['Servico']['ItemListaServico'] = $taxData['item_lista_servico'];
+                }
             }
 
-            // Fill IbsCbs fields if missing or default
+            // ── Alíquota ─────────────────────────────────────────────────────
+            if (isset($taxData['aliquota']) && $taxData['aliquota'] !== '') {
+                $novaAliquota = (float) $taxData['aliquota'];
+                $currentAliquota = $item['InfRps']['Servico']['Valores']['Aliquota'] ?? null;
+
+                if ($forceOverwrite || $currentAliquota === null || $currentAliquota === 0.0) {
+                    $item['InfRps']['Servico']['Valores']['Aliquota'] = $novaAliquota;
+
+                    // Recalcula ValorIss e ValorLiquidoNfse com a nova alíquota
+                    $valorServicos = (float) ($item['InfRps']['Servico']['Valores']['ValorServicos'] ?? 0);
+                    $novoValorIss  = round($valorServicos * ($novaAliquota / 100), 2);
+                    $issRetido     = $item['InfRps']['Servico']['Valores']['IssRetido'] ?? '2';
+                    $descontoIss   = ($issRetido === '1') ? $novoValorIss : 0;
+
+                    // Mantém retenções federais já existentes
+                    $valorPis    = (float) ($item['InfRps']['Servico']['Valores']['ValorPis']    ?? 0);
+                    $valorCofins = (float) ($item['InfRps']['Servico']['Valores']['ValorCofins'] ?? 0);
+                    $valorCsll   = (float) ($item['InfRps']['Servico']['Valores']['ValorCsll']   ?? 0);
+                    $valorIr     = (float) ($item['InfRps']['Servico']['Valores']['ValorIr']     ?? 0);
+                    $totalFed    = $valorPis + $valorCofins + $valorCsll + $valorIr;
+
+                    $item['InfRps']['Servico']['Valores']['ValorIss']          = $novoValorIss;
+                    $item['InfRps']['Servico']['Valores']['ValorLiquidoNfse']  = round($valorServicos - $descontoIss - $totalFed, 2);
+                }
+            }
+
+            // ── CodigoNbs ────────────────────────────────────────────────────
+            if (! empty($taxData['cod_nbs'])) {
+                $current = $item['InfRps']['Servico']['CodigoNbs'] ?? '';
+                if ($forceOverwrite || empty($current)) {
+                    $item['InfRps']['Servico']['CodigoNbs'] = $taxData['cod_nbs'];
+                }
+            }
+
+            // ── IbsCbs ───────────────────────────────────────────────────────
             $ibsCbs = $item['InfRps']['IbsCbs'] ?? [];
 
-            if (empty($ibsCbs['CodigoIndicadorOperacao']) || $ibsCbs['CodigoIndicadorOperacao'] === '000001') {
-                if (! empty($taxData['ind_operacao'])) {
+            if (! empty($taxData['ind_operacao'])) {
+                $current = $ibsCbs['CodigoIndicadorOperacao'] ?? '';
+                if ($forceOverwrite || empty($current) || $current === '000001') {
                     $ibsCbs['CodigoIndicadorOperacao'] = $taxData['ind_operacao'];
                 }
             }
 
-            if (empty($ibsCbs['CST']) || $ibsCbs['CST'] === '000') {
-                if (! empty($taxData['cst_ibs'])) {
+            if (! empty($taxData['cst_ibs'])) {
+                $current = $ibsCbs['CST'] ?? '';
+                if ($forceOverwrite || empty($current) || $current === '000') {
                     $ibsCbs['CST'] = $taxData['cst_ibs'];
                 }
             }
 
-            if (empty($ibsCbs['CodigoClassTrib']) || $ibsCbs['CodigoClassTrib'] === '000001') {
-                if (! empty($taxData['class_trib'])) {
+            if (! empty($taxData['class_trib'])) {
+                $current = $ibsCbs['CodigoClassTrib'] ?? '';
+                if ($forceOverwrite || empty($current) || $current === '000001') {
                     $ibsCbs['CodigoClassTrib'] = $taxData['class_trib'];
                 }
             }

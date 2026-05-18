@@ -99,8 +99,34 @@ class BatchController extends Controller
     }
 
     /**
-     * Sincroniza status do lote com o GINFES.
+     * Enriquece uma lista de RPS com dados fiscais do lookup CNAE (CSV).
+     *
+     * POST /api/lotes/enriquecer-cnae
+     * Body JSON: { "rps_list": [...], "force": true|false }
+     *
+     * Retorna a lista de RPS com Alíquota, ItemListaServico, CodigoNbs e
+     * campos IbsCbs preenchidos/atualizados conforme a tabela tributária.
      */
+    public function enriquecerCnae(Request $request): JsonResponse
+    {
+        $rpsListRaw = $request->input('rps_list');
+
+        if (empty($rpsListRaw) || ! is_array($rpsListRaw)) {
+            return $this->error('O campo rps_list é obrigatório e deve ser um array de RPS.', 422);
+        }
+
+        $force = (bool) $request->input('force', true);
+
+        try {
+            $enriched = $this->batchSyncService->enrichRpsWithTaxData($rpsListRaw, $force);
+        } catch (\Exception $e) {
+            return $this->error('Erro ao aplicar dados CNAE: ' . $e->getMessage(), 500);
+        }
+
+        return $this->success($enriched, 'Dados CNAE aplicados com sucesso.');
+    }
+
+
     public function sincronizar(Request $request, Batch $batch): JsonResponse
     {
         $certs = $this->batchSyncService->resolveCerts($batch->cnpj);
