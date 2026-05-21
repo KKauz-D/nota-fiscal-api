@@ -29,6 +29,20 @@ class CertificateStorageService
         return $config;
     }
 
+    public function updateIm(string $cnpj, string $im): ?array
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+        $config = $this->getConfig($cnpj);
+        if (!$config) {
+            return null;
+        }
+
+        $config['im'] = $im;
+        Storage::disk($this->disk)->put("{$cnpj}.json", json_encode($config, JSON_PRETTY_PRINT));
+
+        return $config;
+    }
+
     public function getConfig(string $cnpj): ?array
     {
         $cnpj = preg_replace('/\D/', '', $cnpj);

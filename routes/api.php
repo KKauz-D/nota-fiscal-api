@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Empresas (Companies / Certificate configs)
     Route::get('/empresas', [CompanyController::class, 'index']);
     Route::post('/empresas', [CompanyController::class, 'store']);
+    Route::put('/empresas/{cnpj}', [CompanyController::class, 'update']);
     Route::delete('/empresas/{cnpj}', [CompanyController::class, 'destroy']);
 
     // Lotes (Batches)

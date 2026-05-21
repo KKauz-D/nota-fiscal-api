@@ -55,6 +55,38 @@ class CompanyController extends Controller
         );
     }
 
+    public function update(Request $request, string $cnpj): JsonResponse
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+
+        $request->validate([
+            'im' => ['required', 'string'],
+        ], [
+            'im.required' => 'A Inscrição Municipal é obrigatória.',
+        ]);
+
+        $im = $request->input('im');
+        $config = $this->certificateStorage->updateIm($cnpj, $im);
+
+        if (!$config) {
+            return $this->error('Empresa não encontrada.', 404);
+        }
+
+        AuditLog::log(
+            action: 'atualizar_im',
+            details: "Inscrição Municipal atualizada para CNPJ {$cnpj} (IM: {$im})",
+            ipAddress: $request->ip(),
+        );
+
+        return $this->success(
+            [
+                'cnpj' => $cnpj,
+                'im'   => $im,
+            ],
+            'Inscrição municipal atualizada com sucesso.'
+        );
+    }
+
     public function destroy(Request $request, string $cnpj): JsonResponse
     {
         $cnpj = preg_replace('/\D/', '', $cnpj);
