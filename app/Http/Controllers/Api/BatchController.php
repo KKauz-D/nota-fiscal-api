@@ -10,6 +10,7 @@ use App\Http\Traits\ApiResponse;
 use App\Models\AuditLog;
 use App\Models\Batch;
 use App\Services\Ginfes\BatchSyncService;
+use App\Services\Import\CnaeService;
 use App\Services\Import\ExcelImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class BatchController extends Controller
     public function __construct(
         private BatchSyncService $batchSyncService,
         private ExcelImportService $excelImportService,
+        private CnaeService $cnaeService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -124,6 +126,28 @@ class BatchController extends Controller
         }
 
         return $this->success($enriched, 'Dados CNAE aplicados com sucesso.');
+    }
+
+    /**
+     * Busca atividades na tabela CNAE/tributária por código ou descrição.
+     *
+     * GET /api/lotes/cnae-search?q=...
+     */
+    public function searchCnae(Request $request): JsonResponse
+    {
+        $query = $request->query('q', '');
+
+        if (strlen(trim($query)) < 2) {
+            return $this->success([], 'Informe pelo menos 2 caracteres.');
+        }
+
+        try {
+            $results = $this->cnaeService->search(trim($query), 15);
+        } catch (\Exception $e) {
+            return $this->error('Erro ao buscar atividades: ' . $e->getMessage(), 500);
+        }
+
+        return $this->success($results);
     }
 
 

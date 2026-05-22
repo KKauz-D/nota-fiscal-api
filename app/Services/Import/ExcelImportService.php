@@ -305,6 +305,7 @@ class ExcelImportService
                 'OptanteSimplesNacional' => $optanteSimples,
                 'IncentivadorCultural' => ($flatData['incentivador_cultural'] ?? '') ?: '2',
                 'Status' => ($flatData['status'] ?? '') ?: '1',
+                'RetencaoFederal' => $aplicaRetencao ? 'sim' : 'nao',
                 'Servico' => [
                     'Valores' => [
                         'ValorServicos' => $valorServicos,
