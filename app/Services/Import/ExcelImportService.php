@@ -274,15 +274,17 @@ class ExcelImportService
             $aplicaRetencao = ($optanteSimples === '2');
         }
 
-        // PIS 0,65% | COFINS 3% | CSLL 1% (CSRF total = 4,65%) | IR 1,5%
-        $valorPis    = $aplicaRetencao ? round($valorServicos * 0.0065, 2) : 0;
-        $valorCofins = $aplicaRetencao ? round($valorServicos * 0.03,   2) : 0;
+        // PIS 0,65% | COFINS 3% → sempre calculados (aparecem na impressão da NFS-e)
+        // CSLL 1% | IR 1,5% → somente quando há retenção federal
+        $valorPis    = round($valorServicos * 0.0065, 2);
+        $valorCofins = round($valorServicos * 0.03,   2);
         $valorCsll   = $aplicaRetencao ? round($valorServicos * 0.01,   2) : 0;
         $valorIr     = $aplicaRetencao ? round($valorServicos * 0.015,  2) : 0;
 
-        $totalRetencoesFederais = $valorPis + $valorCofins + $valorCsll + $valorIr;
+        // Deduções do líquido: PIS e COFINS são apenas informativos (não deduzem do líquido)
+        // Somente CSLL e IR (quando há retenção) deduzem do valor líquido
         $descontoIss  = ($issRetido == '1') ? $valorIss : 0;
-        $valorLiquido = round($valorServicos - $descontoIss - $totalRetencoesFederais, 2);
+        $valorLiquido = round($valorServicos - $descontoIss - $valorCsll - $valorIr, 2);
 
         // Competência → DataEmissao
         // Prioridade: override do formulário > coluna da planilha > coluna data_emissao
@@ -309,8 +311,8 @@ class ExcelImportService
                 'Servico' => [
                     'Valores' => [
                         'ValorServicos' => $valorServicos,
-                        'ValorPis' => $valorPis > 0 ? $valorPis : null,
-                        'ValorCofins' => $valorCofins > 0 ? $valorCofins : null,
+                        'ValorPis' => $valorPis,
+                        'ValorCofins' => $valorCofins,
                         'ValorIr' => $valorIr > 0 ? $valorIr : null,
                         'ValorCsll' => $valorCsll > 0 ? $valorCsll : null,
                         'IssRetido' => $issRetido,
