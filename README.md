@@ -4,7 +4,7 @@ API backend para emissão, consulta e cancelamento de Notas Fiscais de Serviço 
 
 ## Requisitos
 
-- PHP 8.2+
+- PHP 8.3+
 - Extensões PHP: `curl`, `mbstring`, `openssl`, `pdo_sqlite` (ou `pdo_mysql`), `soap`, `zip`, `gd`, `intl`
 - Composer 2.x
 - Certificado digital A1 (.pfx) da empresa emissora
